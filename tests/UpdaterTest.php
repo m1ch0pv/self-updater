@@ -46,6 +46,29 @@ final class UpdaterTest extends TestCase
         }
     }
 
+    public function test_fetch_latest_throws_when_server_unreachable(): void
+    {
+        $updater = new Updater('/tmp/app.phar', 'unused', 'file:///nonexistent-' . uniqid());
+
+        $this->expectException(RuntimeException::class);
+        $updater->fetchLatest();
+    }
+
+    public function test_download_throws_when_release_file_is_missing(): void
+    {
+        // Correctly signed release info, but the server has no such file.
+        $key = openssl_pkey_new(['private_key_bits' => 4096, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
+        $sha = str_repeat('b', 64);
+        openssl_sign("2:$sha", $signature, $key, OPENSSL_ALGO_SHA256);
+
+        $pharPath = sys_get_temp_dir() . '/updater-test-' . uniqid() . '.phar';
+        $updater = new Updater($pharPath, openssl_pkey_get_details($key)['key'], 'file:///nonexistent-' . uniqid());
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('Download failed');
+        $updater->downloadVerified(['version' => 2, 'sha256' => $sha, 'signature' => base64_encode($signature)]);
+    }
+
     public function test_download_url_comes_from_server_url_and_signed_version_not_from_response(): void
     {
         // A fake "server" folder holding the real, signed release.

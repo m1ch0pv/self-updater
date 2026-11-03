@@ -38,6 +38,13 @@ final class AppLockTest extends TestCase
         $this->assertFalse($second->acquire());
     }
 
+    public function test_lock_fails_when_file_cannot_be_opened(): void
+    {
+        $lock = new AppLock('/nonexistent-dir-' . uniqid() . '/app.lock');
+
+        $this->assertFalse($lock->acquire());
+    }
+
     public function test_lock_can_be_taken_after_release(): void
     {
         $first = new AppLock($this->path);

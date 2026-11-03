@@ -5,3 +5,4 @@
 /server/public/releases/*.phar
 /.phpunit.cache/
 /.superpowers/
+/app/public.pem

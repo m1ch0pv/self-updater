@@ -35,7 +35,13 @@ final class Updater
      */
     public function fetchLatest(): array
     {
-        return json_decode(file_get_contents($this->serverUrl . '/latest'), true);
+        // @ hides PHP's warning: we throw our own, clearer error instead.
+        $json = @file_get_contents($this->serverUrl . '/latest');
+        if ($json === false) {
+            throw new RuntimeException("Could not reach update server {$this->serverUrl}");
+        }
+
+        return json_decode($json, true);
     }
 
     /**
@@ -57,8 +63,14 @@ final class Updater
         //    the *signed* version, instead of trusting a URL from the
         //    response. Otherwise a malicious server could make us fetch any
         //    URL (internal hosts, file://, phar://...).
+        //
+        //    copy() silently overwrites an existing app.phar.new. That's
+        //    intended: a leftover from an earlier failed attempt is simply
+        //    replaced, and the new file is re-verified below anyway.
         $newPath = $this->pharPath . '.new';
-        copy("{$this->serverUrl}/releases/app-{$latest['version']}.phar", $newPath);
+        if (!@copy("{$this->serverUrl}/releases/app-{$latest['version']}.phar", $newPath)) {
+            throw new RuntimeException("Download failed for version {$latest['version']}");
+        }
 
         // 3. Hash: the file we got must be exactly the file that was signed.
         if (!Verifier::fileMatchesHash($newPath, $latest['sha256'])) {
@@ -74,6 +86,10 @@ final class Updater
      */
     public function healthCheck(string $newPath, int $expectedVersion): void
     {
+        // exec() fills these two by reference. Declaring them first makes that
+        // visible, and $output must start empty because exec() *appends* to it.
+        $output = [];
+        $exitCode = 0;
         exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($newPath) . ' --health', $output, $exitCode);
 
         if ($exitCode !== 0 || trim($output[0] ?? '') !== (string) $expectedVersion) {

@@ -41,24 +41,32 @@ if (in_array('--updated', $argv, true)) {
     $serverUrl = getenv('UPDATE_SERVER_URL') ?: 'http://localhost:8080';
     $updater = new Updater($pharPath, file_get_contents(__DIR__ . '/public.pem'), $serverUrl);
 
-    $latest = $updater->fetchLatest();
+    try {
+        $latest = $updater->fetchLatest();
 
-    if (Updater::shouldUpdate($version, $latest['version'])) {
-        $newPath = $updater->downloadVerified($latest);       // signature + hash
-        $updater->healthCheck($newPath, $latest['version']);  // new PHAR boots and reports its version
-        $updater->swap($newPath);                             // atomic rename over app.phar
+        if (Updater::shouldUpdate($version, $latest['version'])) {
+            $newPath = $updater->downloadVerified($latest);       // signature + hash
+            $updater->healthCheck($newPath, $latest['version']);  // new PHAR boots and reports its version
+            $updater->swap($newPath);                             // atomic rename over app.phar
 
-        if (function_exists('pcntl_exec')) {
-            // Release first: the restarted app takes the lock again itself.
-            $lock->release();
+            if (function_exists('pcntl_exec')) {
+                // Release first: the restarted app takes the lock again itself.
+                $lock->release();
 
-            // Replace this process with a fresh PHP running the new app.phar.
-            // Same PID, new program: nothing after this line runs.
-            pcntl_exec(PHP_BINARY, [$pharPath, '--updated']);
+                // Replace this process with a fresh PHP running the new app.phar.
+                // Same PID, new program: nothing after this line runs.
+                pcntl_exec(PHP_BINARY, [$pharPath, '--updated']);
+            }
+
+            echo "App was updated to {$latest['version']}, please restart" . PHP_EOL;
+            exit(0);
         }
-
-        echo "App was updated to {$latest['version']}, please restart" . PHP_EOL;
-        exit(0);
+    } catch (Throwable $e) {
+        // A failed update must not stop the app. Every check runs before the
+        // swap, so app.phar is untouched: report it, drop the half-done
+        // download, and carry on with the current version.
+        echo "Update failed: {$e->getMessage()}" . PHP_EOL;
+        @unlink($pharPath . '.new');
     }
 
     echo "Your app is running version $version" . PHP_EOL;

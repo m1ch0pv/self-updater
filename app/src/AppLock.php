@@ -29,7 +29,12 @@ final class AppLock
     public function acquire(): bool
     {
         // 'c' = open for writing, create if missing, don't truncate.
-        $this->handle = fopen($this->path, 'c');
+        // @ hides PHP's warning: we report the failure by returning false.
+        $handle = @fopen($this->path, 'c');
+        if ($handle === false) {
+            return false;
+        }
+        $this->handle = $handle;
 
         // LOCK_EX = exclusive, LOCK_NB = don't block, fail immediately.
         return flock($this->handle, LOCK_EX | LOCK_NB);
