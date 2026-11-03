@@ -1,0 +1,7 @@
+/vendor/
+/client/
+/server/keys/
+/server/latest.yaml
+/server/public/releases/*.phar
+/.phpunit.cache/
+/.superpowers/
