@@ -94,7 +94,7 @@ start ─ lock app.lock ─ GET /latest ─ newer? ─no─→ "running version 
 - **Signature first.** Nothing the server says is trusted until the signature verifies.
 - **The version is signed together with the hash.** A validly signed old PHAR can't be advertised as a newer version.
 - **Signing is asymmetric** rather than a shared secret (HMAC). Anyone can unpack the PHAR, so a secret inside it would let them forge updates. The public key can only verify.
-- `url` in `/latest` isn't signed, and doesn't need to be: whatever is downloaded must match the signed hash.
+- **The server doesn't choose the download URL.** `/latest` returns only `version`, `sha256` and `signature`. The app builds the URL itself as `<its server URL>/releases/app-<signed version>.phar`, so a malicious server can't point it at other hosts or at local files (`file://`, `phar://`).
 
 ### Swapping a running PHAR
 
@@ -121,7 +121,8 @@ vendor/bin/phpunit
 ## Limitations
 
 - **Happy path only.** A failed check throws and stops the process (`app.phar` is untouched). There's no retry, logging, cleanup of `app.phar.new`, or friendly error message. Server down or bad JSON also just fail.
-- **Lock gap at restart.** Between releasing the lock and the new process taking it, another instance could start.
+- **Lock gap at restart.** Between releasing the lock and the new process taking it, another instance could start. The restarted app would then print `Another instance is running`; nothing unsafe happens.
+- **Run it as a PHAR.** `php app/main.php` isn't supported: the lock path comes from `Phar::running()`.
 - **No rollback after the swap.** The health check runs *before* the swap instead.
 - **Replay of old releases.** Versions must be newer, so the latest signed release can't be swapped for an older one. A server can still keep offering an old-but-newer-than-yours release.
 - **Key management.** No key rotation. A stolen private key can sign anything.

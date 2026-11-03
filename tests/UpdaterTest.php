@@ -33,7 +33,6 @@ final class UpdaterTest extends TestCase
 
         $latest = [
             'version' => 2,
-            'url' => 'http://localhost:1/releases/app-2.phar',
             'sha256' => str_repeat('a', 64),
             'signature' => base64_encode('not a real signature'),
         ];
@@ -45,5 +44,30 @@ final class UpdaterTest extends TestCase
             // Nothing may be written to disk when the signature is wrong.
             $this->assertFileDoesNotExist($pharPath . '.new');
         }
+    }
+
+    public function test_download_url_comes_from_server_url_and_signed_version_not_from_response(): void
+    {
+        // A fake "server" folder holding the real, signed release.
+        $serverDir = sys_get_temp_dir() . '/updater-server-' . uniqid();
+        mkdir("$serverDir/releases", 0777, true);
+        file_put_contents("$serverDir/releases/app-2.phar", 'real release');
+
+        $key = openssl_pkey_new(['private_key_bits' => 4096, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
+        $sha = hash('sha256', 'real release');
+        openssl_sign("2:$sha", $signature, $key, OPENSSL_ALGO_SHA256);
+
+        $pharPath = sys_get_temp_dir() . '/updater-test-' . uniqid() . '.phar';
+        $updater = new Updater($pharPath, openssl_pkey_get_details($key)['key'], "file://$serverDir");
+
+        // A malicious server points `url` somewhere else. It must be ignored.
+        $newPath = $updater->downloadVerified([
+            'version' => 2,
+            'url' => 'file:///etc/hosts',
+            'sha256' => $sha,
+            'signature' => base64_encode($signature),
+        ]);
+
+        $this->assertSame('real release', file_get_contents($newPath));
     }
 }

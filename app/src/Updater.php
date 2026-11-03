@@ -31,7 +31,7 @@ final class Updater
     /**
      * Asks the server what the latest release is.
      *
-     * @return array{version: int, url: string, sha256: string, signature: string}
+     * @return array{version: int, sha256: string, signature: string}
      */
     public function fetchLatest(): array
     {
@@ -53,8 +53,12 @@ final class Updater
         // 2. Download into the SAME folder as app.phar. Same filesystem means
         //    the rename() in swap() is atomic: app.phar is always either the
         //    complete old file or the complete new one, never half of each.
+        //    We build the download URL ourselves from our own server URL and
+        //    the *signed* version, instead of trusting a URL from the
+        //    response. Otherwise a malicious server could make us fetch any
+        //    URL (internal hosts, file://, phar://...).
         $newPath = $this->pharPath . '.new';
-        copy($latest['url'], $newPath);
+        copy("{$this->serverUrl}/releases/app-{$latest['version']}.phar", $newPath);
 
         // 3. Hash: the file we got must be exactly the file that was signed.
         if (!Verifier::fileMatchesHash($newPath, $latest['sha256'])) {

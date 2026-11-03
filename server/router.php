@@ -15,10 +15,11 @@ use Symfony\Component\Yaml\Yaml;
 if (parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) === '/latest') {
     $state = Yaml::parseFile(__DIR__ . '/latest.yaml');
 
+    // No download URL here: the app builds it from its own server URL and
+    // the signed version (/releases/app-<version>.phar).
     header('Content-Type: application/json');
     echo json_encode([
         'version' => $state['version'],
-        'url' => "http://{$_SERVER['HTTP_HOST']}/releases/app-{$state['version']}.phar",
         'sha256' => $state['sha256'],
         'signature' => $state['signature'],
     ]);
