@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-// Everything needed to try the app, in one command:   php setup.php
+// Prepares everything needed to try the app:   php setup.php
 //
 // Starts from version 0 every time:
 //   1. installs Composer dependencies (if missing)
 //   2. removes old releases, latest.yaml and the client folder
 //   3. generates the RSA keypair, only the first time (keys are kept after that)
 //   4. releases version 1 and installs it as client/app.phar
-//   5. starts the update server on http://localhost:8080 (Ctrl+C to stop)
 //
 // Running it again resets the version and the client, but keeps the keys.
+// The update server is started separately (see the README).
 
 $root = __DIR__;
 $php = escapeshellarg(PHP_BINARY);
@@ -43,15 +43,10 @@ copy("$root/server/public/releases/app-1.phar", "$root/client/app.phar");
 
 echo <<<TXT
 
-client/app.phar is version 1. Starting the update server on http://localhost:8080 (Ctrl+C to stop).
+Done. client/app.phar is version 1.
 
-In another terminal:
-  php client/app.phar                          -> Your app is running version 1
-  php -d phar.readonly=0 server/release.php    -> Released version 2
-  php client/app.phar                          -> Your app was updated to 2
-
+Next:
+  php -S 0.0.0.0:8080 -t server/public server/router.php   (update server, keep it running)
+  php client/app.phar                                       -> Your app is running version 1
 
 TXT;
-
-// 5. The update server, in the foreground.
-passthru("$php -S 0.0.0.0:8080 -t " . escapeshellarg("$root/server/public") . ' ' . escapeshellarg("$root/server/router.php"));

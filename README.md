@@ -21,13 +21,19 @@ The code is deliberately small. If an update fails at any step, the app reports 
 
 ## Try it
 
-**Terminal 1**, set everything up and start the update server:
+**Set up:**
 
 ```bash
 php setup.php
 ```
 
-This installs dependencies, generates an RSA keypair (first run only), builds version 1 into `client/app.phar`, and serves updates on http://localhost:8080. Running it again resets the version and the client back to 1 but keeps the same keys.
+This installs dependencies, generates an RSA keypair (first run only) and builds version 1 into `client/app.phar`. Running it again resets the version and the client back to 1 but keeps the same keys.
+
+**Terminal 1**, start the update server and leave it running:
+
+```bash
+php -S 0.0.0.0:8080 -t server/public server/router.php
+```
 
 **Terminal 2**, run the app:
 
@@ -60,7 +66,7 @@ The app downloaded version 2, verified it, replaced itself and restarted. Run `r
 ## Layout
 
 ```
-setup.php            one command: keys (first run), version 1 in client/, update server
+setup.php            one command: keys (first run) + version 1 in client/
 app/                 the app that goes inside the PHAR
   main.php           entry point
   public.pem         RSA public key (generated, packed into every PHAR, not committed)
