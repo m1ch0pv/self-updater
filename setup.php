@@ -6,13 +6,12 @@ declare(strict_types=1);
 //
 // Starts from version 0 every time:
 //   1. installs Composer dependencies (if missing)
-//   2. removes old keys, releases, latest.yaml and the client folder
-//   3. generates a new RSA keypair
+//   2. removes old releases, latest.yaml and the client folder
+//   3. generates the RSA keypair, only the first time (keys are kept after that)
 //   4. releases version 1 and installs it as client/app.phar
 //   5. starts the update server on http://localhost:8080 (Ctrl+C to stop)
 //
-// Running it again resets everything, so the client always trusts the key
-// that the server signs with.
+// Running it again resets the version and the client, but keeps the keys.
 
 $root = __DIR__;
 $php = escapeshellarg(PHP_BINARY);
@@ -22,16 +21,21 @@ if (!is_dir("$root/vendor")) {
     passthru('composer install --no-interaction --working-dir=' . escapeshellarg($root));
 }
 
-// 2. Clean slate.
+// 2. Back to version 0: no releases, no installed client. Keys stay.
 @unlink("$root/server/latest.yaml");
-@unlink("$root/server/keys/private.pem");
-@unlink("$root/app/public.pem");
 array_map('unlink', glob("$root/server/public/releases/*.phar"));
 array_map('unlink', glob("$root/client/*"));
 
-// 3 + 4. Run the same scripts you would run by hand. release.php needs
+// 3. Keys only if we don't have both halves yet. A pair is generated
+// together, so if either file is missing both are recreated.
+if (!file_exists("$root/server/keys/private.pem") || !file_exists("$root/app/public.pem")) {
+    passthru("$php " . escapeshellarg("$root/server/keygen.php"));
+} else {
+    echo 'Keeping existing keys (server/keys/private.pem, app/public.pem)' . PHP_EOL;
+}
+
+// 4. Run the same script you would run by hand. release.php needs
 // phar.readonly=0 to write a PHAR, so it runs as a separate PHP process.
-passthru("$php " . escapeshellarg("$root/server/keygen.php"));
 passthru("$php -d phar.readonly=0 " . escapeshellarg("$root/server/release.php"));
 
 @mkdir("$root/client");
