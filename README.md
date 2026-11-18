@@ -1,5 +1,7 @@
 # self-update-app
 
+[![boost my agents](https://app.boostmyagents.com/badge/m1ch0pv/self-updater.svg)](https://app.boostmyagents.com/d/m1ch0pv/self-updater)
+
 A PHP command-line app, shipped as a single `app.phar`, that updates itself securely.
 
 On start it asks a server for the latest version. If that version is newer, the app:
